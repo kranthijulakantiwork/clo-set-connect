@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Virtuoso } from "react-virtuoso";
 import type { RootState } from "../store/store";
 import { loadMoreItems, fetchContent } from "../store/contentSlice";
 import ContentCard from "./ContentCard";
@@ -11,41 +12,45 @@ export default function ContentGrid() {
   const dispatch = useDispatch();
   const { displayedItems, filteredItems, loading, hasMoreToFetch } =
     useSelector((state: RootState) => state.content);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [columnCount, setColumnCount] = useState(4);
+
   const hasMoreDisplayed = displayedItems.length < filteredItems.length;
 
-  const shouldFetchMore =
-    hasMoreDisplayed &&
-    displayedItems.length >= filteredItems.length - 20 &&
-    hasMoreToFetch &&
-    !loading;
-
   useEffect(() => {
-    if (!loadMoreRef.current) return;
+    const updateColumnCount = () => {
+      const width = window.innerWidth;
+      if (width < 480) setColumnCount(1);
+      else if (width < 768) setColumnCount(2);
+      else if (width < 1200) setColumnCount(3);
+      else setColumnCount(4);
+    };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loading) {
-          if (hasMoreDisplayed) {
-            dispatch(loadMoreItems());
-          }
-          if (shouldFetchMore) {
-            dispatch(fetchContent() as any);
-          }
-        }
-      },
-      {
-        threshold: 0.1,
-        rootMargin: "100px",
-        // rootMargin: `${window.innerHeight}px`, // Trigger when one viewport height away
-      }
-    );
+    updateColumnCount();
+    window.addEventListener("resize", updateColumnCount);
+    return () => window.removeEventListener("resize", updateColumnCount);
+  }, []);
 
-    observer.observe(loadMoreRef.current);
+  const rows = [];
+  for (let i = 0; i < displayedItems.length; i += columnCount) {
+    rows.push(displayedItems.slice(i, i + columnCount));
+  }
 
-    return () => observer.disconnect();
-  }, [hasMoreDisplayed, shouldFetchMore, loading, dispatch]);
+  const handleEndReached = () => {
+    if (loading) return;
+
+    if (hasMoreDisplayed) {
+      dispatch(loadMoreItems());
+    }
+
+    const shouldFetchMore =
+      hasMoreDisplayed &&
+      displayedItems.length >= filteredItems.length - 20 &&
+      hasMoreToFetch;
+
+    if (shouldFetchMore) {
+      dispatch(fetchContent() as any);
+    }
+  };
 
   if (loading && displayedItems.length === 0) {
     return (
@@ -84,31 +89,51 @@ export default function ContentGrid() {
   }
 
   return (
-    <div className="w-full pt-6" ref={containerRef}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {displayedItems.map((item) => (
-          <ContentCard key={item.id} item={item} />
-        ))}
-      </div>
-
-      {loading && (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <SkeletonCard key={`skeleton-${index}`} />
-          ))}
-        </div>
-      )}
-
-      {/* Intersection observer target - positioned one viewport away */}
-      {(hasMoreDisplayed || hasMoreToFetch) && !loading && (
-        <div ref={loadMoreRef} className="h-4 w-full" />
-      )}
-
-      {!hasMoreDisplayed && !hasMoreToFetch && displayedItems.length > 0 && (
-        <div className="text-center py-8 text-gray-500 text-sm">
-          No more items to load
-        </div>
-      )}
+    <div className="w-full pt-6">
+      <Virtuoso
+        useWindowScroll
+        data={rows}
+        endReached={handleEndReached}
+        overscan={200}
+        itemContent={(_, rowItems) => (
+          <div
+            className="grid gap-4 pb-4"
+            style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}
+          >
+            {rowItems.map((item) => (
+              <ContentCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+        components={{
+          Footer: () => {
+            if (loading) {
+              return (
+                <div
+                  className="grid gap-4 pb-4"
+                  style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}
+                >
+                  {Array.from({ length: columnCount * 2 }).map((_, index) => (
+                    <SkeletonCard key={`skeleton-${index}`} />
+                  ))}
+                </div>
+              );
+            }
+            if (
+              !hasMoreDisplayed &&
+              !hasMoreToFetch &&
+              displayedItems.length > 0
+            ) {
+              return (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  No more items to load
+                </div>
+              );
+            }
+            return null;
+          },
+        }}
+      />
     </div>
   );
 }

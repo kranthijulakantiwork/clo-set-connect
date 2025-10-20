@@ -13,6 +13,7 @@
     "react": "^19",
     "react-dom": "^19",
     "react-redux": "latest",
+    "react-virtuoso": "latest",
     "redux": "latest",
     "tailwindcss-animate": "^1.0.7"
   },
