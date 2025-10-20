@@ -39,10 +39,10 @@ export default function ContentCard({ item }: ContentCardProps) {
         />
       </div>
 
-      <div className="p-4 flex flex-col justify-between flex-1">
+      <div className="p-4 flex flex-row justify-between flex-1">
         <div>
           <h3 className="font-normal text-white text-sm mb-1">{item.title}</h3>
-          <p className="text-xs text-gray-400">{item.userName}</p>
+          <p className="text-xs text-gray-400">{item.creator}</p>
         </div>
 
         <div className="mt-3 text-right">{getPricingDisplay()}</div>
