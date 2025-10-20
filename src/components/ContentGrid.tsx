@@ -9,7 +9,7 @@ import SkeletonCard from "./SkeletonCard";
 
 export default function ContentGrid() {
   const dispatch = useDispatch();
-  const { displayedItems, filteredItems, loading, hasMoreToFetch, allItems } =
+  const { displayedItems, filteredItems, loading, hasMoreToFetch } =
     useSelector((state: RootState) => state.content);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,7 +31,7 @@ export default function ContentGrid() {
             dispatch(loadMoreItems());
           }
           if (shouldFetchMore) {
-            dispatch(fetchContent());
+            dispatch(fetchContent() as any);
           }
         }
       },
